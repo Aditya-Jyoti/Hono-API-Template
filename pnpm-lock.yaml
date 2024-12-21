@@ -13,6 +13,9 @@ importers:
       hono:
         specifier: ^4.6.14
         version: 4.6.14
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
     devDependencies:
       "@types/node":
         specifier: ^20.11.17
@@ -1515,6 +1518,12 @@ packages:
       }
     engines: { node: ">=10" }
 
+  zod@3.24.1:
+    resolution:
+      {
+        integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==,
+      }
+
 snapshots:
   "@esbuild/aix-ppc64@0.23.1":
     optional: true
@@ -2310,3 +2319,5 @@ snapshots:
   yaml@2.6.1: {}
 
   yocto-queue@0.1.0: {}
+
+  zod@3.24.1: {}
