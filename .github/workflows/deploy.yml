@@ -1,73 +1,57 @@
-name: Deploy Lemons API
-
+name: Deploy Hono API
 on:
   push:
     branches:
       - master
-
-env:
-  REGISTRY: ghcr.io
+  pull_request:
+    types: [closed]
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      # Checkout repository
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Set lowercase repo name for Docker image
-      - name: Set lowercase repository name
-        id: repo
-        run: echo "repo_name=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      - name: Build docker image
+        run: |
+          docker build -t lemons:latest .
+          sudo docker save lemons:latest -o lemons.tar
+          sudo chmod 644 lemons.tar  # Add read permissions
 
-      # Log in to GitHub Container Registry
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Build and push Docker image
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.repo_name }}:latest
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-
-    steps:
-      # SSH into VPS and deploy
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@master
+      - name: transfer docker image to vps
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            # Print the repo name to verify it's correct
-            echo "Using repository: ghcr.io/${{ env.repo_name }}:latest"
+          port: 22
+          source: "lemons.tar"
+          target: "/home/${{ secrets.VPS_USER }}"
+          overwrite: true
+          debug: true
 
+      - name: deploy to vps
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            # Load the image
+            sudo docker load < lemons.tar
             docker ps
 
-            # Pull the latest image
-            docker pull ghcr.io/${{ env.repo_name }}:latest
+            # Clean up existing container
+            sudo docker stop lemons || true
+            sudo docker rm lemons || true
 
-            # Stop and remove the old container if it exists
-            docker stop lemons || true
-            docker rm lemons || true
-
-            # Run the new container
-            docker run -d \
-              --name lemons \
+            # Run new container
+            sudo docker run -d --name lemons \
               --restart unless-stopped \
-              -p 3000:3000 \
-              ghcr.io/${{ env.repo_name }}:latest
+              -p 10014:3000 \
+              lemons:latest
+
+            # Clean up tar file
+            rm lemons.tar
