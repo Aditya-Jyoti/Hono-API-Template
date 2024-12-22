@@ -16,6 +16,7 @@ export default [
       "pre-commit",
       ".prettierignore",
       "schema.prisma",
+      "Dockerfile",
     ],
     files: ["**/*.{js,mjs,cjs,ts,tsx}"],
     languageOptions: {

@@ -1,0 +1,46 @@
+name: Deploy Hono API
+
+on:
+  push:
+    branches:
+      - main
+    pull_request:
+      types: [closed]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: build docker image
+        run: |
+          docker build -t lemons .
+          docker save lemons > lemons.tar
+
+      - name: transfer docker image to vps
+        uses: appleboy/scp-action@v0.1.8
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          source: lemons.tar
+          target: /tmp/lemons.tar
+
+      - name: deploy to vps
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            docker load < /tmp/lemons.tar
+
+            docker stop lemons || true
+            docker rm lemons || true
+
+            docker run -d --name lemons -p 10014:3000 lemons

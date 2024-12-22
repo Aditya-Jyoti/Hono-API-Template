@@ -6,3 +6,4 @@ build
 pre-commit
 .prettierignore
 schema.prisma
+Dockerfile
