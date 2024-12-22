@@ -4,12 +4,10 @@ on:
   push:
     branches:
       - master
-  pull_request:
-    types: [closed]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository | toLower }}
 
 jobs:
   build-and-push:
@@ -44,11 +42,11 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Pull the latest image
-            docker pull ghcr.io/${{ github.repository }}:latest
+            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
 
             # Stop and remove the old container if it exists
             docker stop lemons || true
@@ -59,4 +57,4 @@ jobs:
               --name lemons \
               --restart unless-stopped \
               -p 3000:3000 \
-              ghcr.io/${{ github.repository }}:latest
+              ghcr.io/${{ env.IMAGE_NAME }}:latest
