@@ -1,24 +1,25 @@
 name: Deploy Hono API
-
 on:
   push:
     branches:
       - master
-    pull_request:
-      types: [closed]
+  pull_request:
+    types: [closed]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: build docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build docker image
         run: |
-          docker build -t lemons .
-          docker save lemons > lemons.tar
+          docker build -t lemons:latest .
+          docker save lemons:latest -o lemons.tar
 
       - name: transfer docker image to vps
         uses: appleboy/scp-action@v0.1.7
@@ -27,8 +28,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          source: lemons.tar
-          target: /tmp/lemons.tar
+          source: "lemons.tar"
+          target: "/home/${{ secrets.VPS_USER }}"
+          strip_components: 1
 
       - name: deploy to vps
         uses: appleboy/ssh-action@v0.1.7
@@ -38,9 +40,21 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            docker load < /tmp/lemons.tar
+            # Ensure docker has right permissions
+            sudo chown $USER:docker lemons.tar
 
-            docker stop lemons || true
-            docker rm lemons || true
+            # Load the image
+            sudo docker load < lemons.tar
 
-            docker run -d --name lemons -p 10014:3000 lemons
+            # Clean up existing container
+            sudo docker stop lemons || true
+            sudo docker rm lemons || true
+
+            # Run new container
+            sudo docker run -d --name lemons \
+              --restart unless-stopped \
+              -p 10014:3000 \
+              lemons:latest
+
+            # Clean up tar file
+            rm lemons.tar
