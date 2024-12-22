@@ -40,13 +40,14 @@ jobs:
           port: 22
           script: |
             # Load the image
-            sudo docker load < lemons.tar
+            ls
+            docker load < lemons.tar
 
-            sudo docker stop lemons || true
-            sudo docker rm lemons || true
+            docker stop lemons || true
+            docker rm lemons || true
 
             # Run new container
-            sudo docker run -d --name lemons \
+            docker run -d --name lemons \
               --restart unless-stopped \
               -p 10014:3000 \
               lemons:latest
