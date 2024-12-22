@@ -9,9 +9,15 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      repo_name: ${{ github.repository }} 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Extract Repository Name
+        id: extract-repo-name
+        run: echo "::set-output name=repo_name::$(basename ${{ github.repository }})"
 
       - name: Build Docker image
         run: |
@@ -19,12 +25,12 @@ jobs:
             --build-arg POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
             --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
             --build-arg POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
-            -t ${{ env.repo_name }} .
+            -t ${{ steps.extract-repo-name.outputs.repo_name }} .
 
       - name: Save Docker image as tar
         run: |
-          sudo docker save ${{ env.repo_name }}:latest -o ${{ env.repo_name }}.tar
-          sudo chmod 644 ${{ env.repo_name }}.tar
+          sudo docker save ${{ steps.extract-repo-name.outputs.repo_name }}:latest -o ${{ steps.extract-repo-name.outputs.repo_name }}.tar
+          sudo chmod 644 ${{ steps.extract-repo-name.outputs.repo_name }}.tar
 
       - name: Transfer Docker image to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -33,7 +39,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          source: "${{ env.repo_name }}.tar"
+          source: "${{ steps.extract-repo-name.outputs.repo_name }}.tar"
           target: "/tmp/"
           overwrite: true
           debug: true
@@ -46,21 +52,22 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            mkdir /tmp/${{ env.repo_name }} -p
-            cd /tmp/${{ env.repo_name }}
-            mv ../${{ env.repo_name }}.tar .
+            mkdir /tmp/${{ steps.extract-repo-name.outputs.repo_name }} -p
+            cd /tmp/${{ steps.extract-repo-name.outputs.repo_name }}
+            mv ../${{ steps.extract-repo-name.outputs.repo_name }}.tar .
 
-            docker load < ${{ env.repo_name }}.tar
+            docker load < ${{ steps.extract-repo-name.outputs.repo_name }}.tar
 
-            docker stop ${{ env.repo_name }} || true
-            docker rm ${{ env.repo_name }} || true
-
-            docker run -d --name ${{ env.repo_name }} \
-              --restart unless-stopped \
-              -p 10014:3000 \
-              ${{ env.repo_name }}:latest
+            docker stop ${{ steps.extract-repo-name.outputs.repo_name }} || true
+            docker rm ${{ steps.extract-repo-name.outputs.repo_name }} || true
 
             rm .env 
             echo "DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}?schema=public" > .env
 
-            rm ${{ env.repo_name }}.tar
+            docker run -d --name ${{ steps.extract-repo-name.outputs.repo_name }} \
+              --restart unless-stopped \
+              --env-file .env \
+              -p 10014:3000 \
+              ${{ steps.extract-repo-name.outputs.repo_name }}:latest
+
+            rm ${{ steps.extract-repo-name.outputs.repo_name }}.tar
