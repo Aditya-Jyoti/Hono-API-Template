@@ -13,13 +13,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build docker image
+      - name: Build Docker image
         run: |
-          sudo docker build -t lemons .
+          sudo docker build \
+            --build-arg POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            --build-arg POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+            -t lemons .
+
+      - name: Save Docker image as tar
+        run: |
           sudo docker save lemons:latest -o lemons.tar
           sudo chmod 644 lemons.tar
 
-      - name: transfer docker image to vps
+      - name: Transfer Docker image to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -31,7 +38,7 @@ jobs:
           overwrite: true
           debug: true
 
-      - name: deploy to vps
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -43,14 +50,18 @@ jobs:
             cd /tmp
             docker load < lemons.tar
 
+            # Stop and remove the existing container if it exists
             docker stop lemons || true
             docker rm lemons || true
 
-            # Run new container
+            # Run the new container
             docker run -d --name lemons \
               --restart unless-stopped \
               -p 10014:3000 \
               lemons:latest
+
+            # Create .env file with DATABASE_URL
+            echo "DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}?schema=public" > /tmp/.env
 
             # Clean up tar file
             rm lemons.tar
