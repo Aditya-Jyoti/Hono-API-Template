@@ -19,12 +19,12 @@ jobs:
             --build-arg POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
             --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
             --build-arg POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
-            -t lemons .
+            -t ${{ env.repo_name }} .
 
       - name: Save Docker image as tar
         run: |
-          sudo docker save lemons:latest -o lemons.tar
-          sudo chmod 644 lemons.tar
+          sudo docker save ${{ env.repo_name }}:latest -o ${{ env.repo_name }}.tar
+          sudo chmod 644 ${{ env.repo_name }}.tar
 
       - name: Transfer Docker image to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -33,7 +33,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          source: "lemons.tar"
+          source: "${{ env.repo_name }}.tar"
           target: "/tmp/"
           overwrite: true
           debug: true
@@ -46,22 +46,21 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            # Load the image
-            cd /tmp
-            docker load < lemons.tar
+            mkdir /tmp/${{ env.repo_name }} -p
+            cd /tmp/${{ env.repo_name }}
+            mv ../${{ env.repo_name }}.tar .
 
-            # Stop and remove the existing container if it exists
-            docker stop lemons || true
-            docker rm lemons || true
+            docker load < ${{ env.repo_name }}.tar
 
-            # Run the new container
-            docker run -d --name lemons \
+            docker stop ${{ env.repo_name }} || true
+            docker rm ${{ env.repo_name }} || true
+
+            docker run -d --name ${{ env.repo_name }} \
               --restart unless-stopped \
               -p 10014:3000 \
-              lemons:latest
+              ${{ env.repo_name }}:latest
 
-            # Create .env file with DATABASE_URL
-            echo "DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}?schema=public" > /tmp/.env
+            rm .env 
+            echo "DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}?schema=public" > .env
 
-            # Clean up tar file
-            rm lemons.tar
+            rm ${{ env.repo_name }}.tar
