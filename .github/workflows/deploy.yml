@@ -7,7 +7,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository | toLower }}
 
 jobs:
   build-and-push:
@@ -18,6 +17,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Extract lowercase repository name
+        id: repo
+        run: echo "repo_name=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -31,7 +34,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.repo_name }}:latest
 
   deploy:
     needs: build-and-push
@@ -46,7 +49,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Pull the latest image
-            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
+            docker pull ghcr.io/${{ env.repo_name }}:latest
 
             # Stop and remove the old container if it exists
             docker stop lemons || true
@@ -57,4 +60,4 @@ jobs:
               --name lemons \
               --restart unless-stopped \
               -p 3000:3000 \
-              ghcr.io/${{ env.IMAGE_NAME }}:latest
+              ghcr.io/${{ env.repo_name }}:latest
