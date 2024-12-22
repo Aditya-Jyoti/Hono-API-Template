@@ -13,13 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build docker image
         run: |
           docker build -t lemons:latest .
-          docker save lemons:latest -o lemons.tar
+          sudo docker save lemons:latest -o lemons.tar
+          sudo chmod 644 lemons.tar  # Add read permissions
 
       - name: transfer docker image to vps
         uses: appleboy/scp-action@v0.1.7
@@ -30,7 +28,8 @@ jobs:
           port: 22
           source: "lemons.tar"
           target: "/home/${{ secrets.VPS_USER }}"
-          strip_components: 1
+          overwrite: true
+          debug: true
 
       - name: deploy to vps
         uses: appleboy/ssh-action@v0.1.7
@@ -40,9 +39,6 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
-            # Ensure docker has right permissions
-            sudo chown $USER:docker lemons.tar
-
             # Load the image
             sudo docker load < lemons.tar
 
