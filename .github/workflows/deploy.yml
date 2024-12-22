@@ -56,6 +56,8 @@ jobs:
             # Print the repo name to verify it's correct
             echo "Using repository: ghcr.io/${{ env.repo_name }}:latest"
 
+            docker ps
+
             # Pull the latest image
             docker pull ghcr.io/${{ env.repo_name }}:latest
 
