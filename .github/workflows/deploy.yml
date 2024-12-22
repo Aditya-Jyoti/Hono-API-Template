@@ -21,7 +21,7 @@ jobs:
           docker save lemons > lemons.tar
 
       - name: transfer docker image to vps
-        uses: appleboy/scp-action@v0.1.8
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -31,7 +31,7 @@ jobs:
           target: /tmp/lemons.tar
 
       - name: deploy to vps
-        uses: appleboy/ssh-action@v0.1.9
+        uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
