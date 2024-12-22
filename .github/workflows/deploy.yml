@@ -9,15 +9,13 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      repo_name: ${{ github.repository }} 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Extract Repository Name
         id: extract-repo-name
-        run: echo "::set-output name=repo_name::$(basename ${{ github.repository }})"
+        run: echo "::set-output name=repo_name::$(basename ${{ github.repository }} | tr '[:upper:]' '[:lower:]')"
 
       - name: Build Docker image
         run: |
