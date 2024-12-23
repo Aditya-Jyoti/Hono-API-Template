@@ -1,10 +1,14 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 
+import authRouter from "./routes/auth/index.js";
+
 const app = new Hono();
 
+app.route("/auth", authRouter);
+
 app.get("/", (c) => {
-  return c.text("Hello Hono!");
+  return c.text("Server is alive!");
 });
 
 const port = 3000;
