@@ -21,6 +21,9 @@ export default [
       ".env.copy",
       ".env",
       "deploy.yml",
+      "migration.sql",
+      "migration_lock.toml",
+      "init.sh",
     ],
     files: ["**/*.{js,mjs,cjs,ts,tsx}"],
     languageOptions: {
