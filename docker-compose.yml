@@ -35,8 +35,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data
     ports:
-      - "${MINIO_API_PORT1}:9000"
-      - "${MINIO_API_PORT2}:9001"
+      - "${MINIO_API_PORT}:9000"
       - "${MINIO_WEB_PORT}:40411"
     volumes:
       - minio_data:/data
