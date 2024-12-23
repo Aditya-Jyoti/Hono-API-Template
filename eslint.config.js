@@ -20,6 +20,7 @@ export default [
       "docker-compose.yml",
       ".env.copy",
       ".env",
+      "deploy.yml",
     ],
     files: ["**/*.{js,mjs,cjs,ts,tsx}"],
     languageOptions: {

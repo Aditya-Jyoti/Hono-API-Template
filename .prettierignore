@@ -10,3 +10,4 @@ Dockerfile
 docker-compose.yml
 .env.copy
 .env
+deploy.yml
