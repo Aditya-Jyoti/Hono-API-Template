@@ -6,9 +6,7 @@
     "build": "rm -rf dist/ && tsc",
     "start": "node dist/index.js",
     "generate": "prisma generate",
-    "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "prebuild": "pnpm run type-check",
     "prepare": "husky"
   },
   "dependencies": {
