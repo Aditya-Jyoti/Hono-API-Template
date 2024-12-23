@@ -1,71 +1,26 @@
-name: Deploy Hono API
+name: Deploy on Push
+
 on:
   push:
     branches:
       - master
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: self-hosted
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Extract Repository Name
-        id: extract-repo-name
-        run: echo "::set-output name=repo_name::$(basename ${{ github.repository }} | tr '[:upper:]' '[:lower:]')"
-
-      - name: Build Docker image
+      - name: Install Docker Compose
         run: |
-          sudo docker build \
-            --build-arg POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
-            --build-arg POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-            --build-arg POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
-            -t ${{ steps.extract-repo-name.outputs.repo_name }} .
+          if ! [ -x "$(command -v docker-compose)" ]; then
+            sudo apt-get update
+            sudo apt-get install -y docker-compose
+          fi
 
-      - name: Save Docker image as tar
+      - name: Build and run containers
         run: |
-          sudo docker save ${{ steps.extract-repo-name.outputs.repo_name }}:latest -o ${{ steps.extract-repo-name.outputs.repo_name }}.tar
-          sudo chmod 644 ${{ steps.extract-repo-name.outputs.repo_name }}.tar
-
-      - name: Transfer Docker image to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          source: "${{ steps.extract-repo-name.outputs.repo_name }}.tar"
-          target: "/tmp/"
-          overwrite: true
-          debug: true
-
-      - name: Deploy to VPS
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          script: |
-            mkdir /tmp/${{ steps.extract-repo-name.outputs.repo_name }} -p
-            cd /tmp/${{ steps.extract-repo-name.outputs.repo_name }}
-            mv ../${{ steps.extract-repo-name.outputs.repo_name }}.tar .
-
-            docker load < ${{ steps.extract-repo-name.outputs.repo_name }}.tar
-
-            docker stop ${{ steps.extract-repo-name.outputs.repo_name }} || true
-            docker rm ${{ steps.extract-repo-name.outputs.repo_name }} || true
-
-            rm .env 
-            echo "DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}?schema=public" > .env
-
-            docker run -d --name ${{ steps.extract-repo-name.outputs.repo_name }} \
-              --restart unless-stopped \
-              --env-file .env \
-              -p 10014:3000 \
-              ${{ steps.extract-repo-name.outputs.repo_name }}:latest
-
-            rm ${{ steps.extract-repo-name.outputs.repo_name }}.tar
+          docker-compose down
+          docker-compose up -d
