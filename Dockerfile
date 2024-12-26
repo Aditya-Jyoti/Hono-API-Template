@@ -25,10 +25,6 @@ COPY . .
 COPY init.sh .
 RUN chmod +x init.sh
 
-# Build the app (using TypeScript compiler)
-RUN pnpm run build
-RUN pnpm prisma generate
-
 # Expose necessary ports
 EXPOSE 3000
 
